@@ -5,19 +5,53 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
+var primaryColor = lipgloss.Color("#e35fc6")
+
+type styles struct {
+	app          lipgloss.Style
+	title        lipgloss.Style
+	queueItem    lipgloss.Style
+	selectedItem lipgloss.Style
+	help         lipgloss.Style
+}
+
+func newStyles() styles {
+	return styles{
+		app: lipgloss.NewStyle().
+			Padding(0, 1).
+			Margin(1, 2).
+			BorderStyle(lipgloss.RoundedBorder()).
+			BorderForeground(primaryColor),
+		title: lipgloss.NewStyle().
+			Bold(true).
+			Foreground(primaryColor),
+		help: lipgloss.NewStyle().
+			Foreground(lipgloss.Alpha(primaryColor, 0.1)),
+		queueItem: lipgloss.NewStyle().Foreground(lipgloss.White),
+		selectedItem: lipgloss.NewStyle().
+			Background(primaryColor).
+			Foreground(lipgloss.Black),
+	}
+}
+
 type model struct {
+	styles   styles
 	songs    []string
 	cursor   int
 	selected map[int]struct{}
 }
 
 func initialModel() model {
-	return model{
+	m := model{
+		styles:   newStyles(),
 		songs:    []string{"Haru", "Setting Sun", "Plover"},
 		selected: make(map[int]struct{}),
 	}
+
+	return m
 }
 
 func (m model) Init() tea.Cmd {
@@ -56,24 +90,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() tea.View {
-	s := "Select a song to play.\n\n"
+	header := m.styles.title.Render("Select a song to play.\n")
 
+	queue := "\n"
 	for i, song := range m.songs {
-		cursor := " "
-		if m.cursor == i {
-			cursor = ">"
+		item := fmt.Sprintf("%2d. %-15s Eve ", i+1, song)
+		if i == m.cursor {
+			queue += m.styles.selectedItem.MaxWidth(40).Render(item)
+		} else {
+			queue += m.styles.queueItem.MaxWidth(40).Render(item)
 		}
-
-		checked := " "
-		if _, ok := m.selected[i]; ok {
-			checked = "x"
-		}
-
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, song)
+		queue += "\n"
 	}
 
-	s += "\nPress q to quit.\n"
+	help := m.styles.help.Render("\nPress q to quit.\n")
 
+	s := m.styles.app.Render(header, queue, help)
 	v := tea.NewView(s)
 	v.AltScreen = true
 	return v
